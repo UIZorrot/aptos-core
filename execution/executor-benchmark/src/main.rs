@@ -11,6 +11,7 @@ use aptos_executor_benchmark::{
 };
 use aptos_metrics_core::{register_int_gauge, IntGauge};
 use aptos_push_metrics::MetricsPusher;
+use aptos_transaction_generator_lib::args::TransactionTypeArg;
 use aptos_vm::AptosVM;
 use once_cell::sync::Lazy;
 use std::{
@@ -153,6 +154,12 @@ enum Command {
         )]
         blocks: usize,
 
+        // TODO change to clap, to align with txn-emitter, and can reuse enums
+        // #[structopt(
+        //     long,
+        //     about = "Workload (transaction type). Uses raw coin transfer if not set, and if set uses transaction-generator-lib to generate it"
+        // )]
+        // transaction_type: Option<TransactionTypeArg>,
         #[structopt(long, parse(from_os_str))]
         data_dir: PathBuf,
 
@@ -197,12 +204,17 @@ where
         },
         Command::RunExecutor {
             blocks,
+            // transaction_type,
             data_dir,
             checkpoint_dir,
         } => {
             aptos_executor_benchmark::run_benchmark::<E>(
                 opt.block_size,
                 blocks,
+                Some(TransactionTypeArg::CoinTransfer).map(|t| t.materialize()),
+                // Some(TransactionTypeArg::PublishPackage).map(|t| t.materialize()),
+
+                // transaction_type.map(|t| t.materialize()),
                 opt.transactions_per_sender,
                 data_dir,
                 checkpoint_dir,
