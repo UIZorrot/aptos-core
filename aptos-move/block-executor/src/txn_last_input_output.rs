@@ -213,7 +213,8 @@ impl<K: ModulePath, T: TransactionOutput, E: Send + Clone> TxnLastInputOutput<K,
     }
 
     pub fn module_publishing_may_race(&self) -> bool {
-        self.module_read_write_intersection.load(Ordering::Acquire)
+        true
+        // self.module_read_write_intersection.load(Ordering::Acquire)
     }
 
     pub fn read_set(&self, txn_idx: TxnIndex) -> Option<Arc<Vec<ReadDescriptor<K>>>> {

@@ -485,7 +485,7 @@ where
         };
 
         if matches!(ret, Err(Error::ModulePathReadWrite)) {
-            debug!("[Execution]: Module read & written, sequential fallback");
+            println!("[Execution]: Module read & written, sequential fallback");
 
             // All logs from the parallel execution should be cleared and not reported.
             // Clear by re-initializing the speculative logs.

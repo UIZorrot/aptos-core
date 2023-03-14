@@ -96,6 +96,8 @@ impl<
         use MVDataError::*;
         use MVDataOutput::*;
 
+        return ReadResult::ExecutionHalted;
+
         loop {
             match self.versioned_map.fetch_data(key, txn_idx) {
                 Ok(Versioned(version, v)) => {
