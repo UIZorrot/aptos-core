@@ -5,14 +5,15 @@ use crate::{
     errors::Error,
     task::{ExecutionStatus, Transaction, TransactionOutput},
 };
-use aptos_aggregator::delta_change_set::DeltaOp;
 use aptos_mvhashmap::types::{Incarnation, TxnIndex, Version};
-use aptos_types::{access_path::AccessPath, executable::ModulePath};
+use aptos_types::{access_path::AccessPath, executable::ModulePath, write_set::WriteOp};
 use arc_swap::ArcSwapOption;
 use crossbeam::utils::CachePadded;
 use dashmap::DashSet;
+use once_cell::sync::OnceCell;
 use std::{
     collections::HashSet,
+    iter::{empty, Iterator},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -20,8 +21,23 @@ use std::{
 };
 
 type TxnInput<K> = Vec<ReadDescriptor<K>>;
-type TxnOutput<T, E> = ExecutionStatus<T, Error<E>>;
+// When a transaction is committed, the output delta writes must be populated by
+// the WriteOps corresponding to the deltas in the corresponding outputs.
+struct TxnOutput<T: TransactionOutput, E> {
+    output_status: ExecutionStatus<T, Error<E>>,
+    materialized_deltas:
+        OnceCell<Vec<(<<T as TransactionOutput>::Txn as Transaction>::Key, WriteOp)>>,
+}
 type KeySet<T> = HashSet<<<T as TransactionOutput>::Txn as Transaction>::Key>;
+
+impl<T: TransactionOutput, E> TxnOutput<T, E> {
+    fn from_output_status(output_status: ExecutionStatus<T, Error<E>>) -> Self {
+        Self {
+            output_status,
+            materialized_deltas: OnceCell::new(),
+        }
+    }
+}
 
 /// Information about the read which is used by validation.
 #[derive(Clone, PartialEq)]
@@ -32,8 +48,6 @@ enum ReadKind {
     Version(TxnIndex, Incarnation),
     /// Read resolved a delta.
     Resolved(u128),
-    /// Read returned a delta and needs to go to storage.
-    Unresolved(DeltaOp),
     /// Read occurred from storage.
     Storage,
     /// Read triggered a delta application failure.
@@ -59,13 +73,6 @@ impl<K: ModulePath> ReadDescriptor<K> {
         Self {
             access_path,
             kind: ReadKind::Resolved(value),
-        }
-    }
-
-    pub fn from_unresolved(access_path: K, delta: DeltaOp) -> Self {
-        Self {
-            access_path,
-            kind: ReadKind::Unresolved(delta),
         }
     }
 
@@ -102,11 +109,6 @@ impl<K: ModulePath> ReadDescriptor<K> {
         self.kind == ReadKind::Resolved(value)
     }
 
-    // Does the read descriptor describe a read from MVHashMap w. an unresolved delta.
-    pub fn validate_unresolved(&self, delta: DeltaOp) -> bool {
-        self.kind == ReadKind::Unresolved(delta)
-    }
-
     // Does the read descriptor describe a read from storage.
     pub fn validate_storage(&self) -> bool {
         self.kind == ReadKind::Storage
@@ -118,7 +120,7 @@ impl<K: ModulePath> ReadDescriptor<K> {
     }
 }
 
-pub struct TxnLastInputOutput<K, T, E> {
+pub struct TxnLastInputOutput<K, T: TransactionOutput, E> {
     inputs: Vec<CachePadded<ArcSwapOption<TxnInput<K>>>>, // txn_idx -> input.
 
     outputs: Vec<CachePadded<ArcSwapOption<TxnOutput<T, E>>>>, // txn_idx -> output.
@@ -175,7 +177,7 @@ impl<K: ModulePath, T: TransactionOutput, E: Send + Clone> TxnLastInputOutput<K,
     /// error that ensures a fallback to a correct sequential execution.
     /// When the sets do not have an intersection, it is impossible for the race to occur as any
     /// module in the loader cache may not be published by a transaction in the ongoing block.
-    pub fn record(
+    pub(crate) fn record(
         &self,
         txn_idx: TxnIndex,
         input: Vec<ReadDescriptor<K>>,
@@ -203,23 +205,23 @@ impl<K: ModulePath, T: TransactionOutput, E: Send + Clone> TxnLastInputOutput<K,
         }
 
         self.inputs[txn_idx as usize].store(Some(Arc::new(input)));
-        self.outputs[txn_idx as usize].store(Some(Arc::new(output)));
+        self.outputs[txn_idx as usize].store(Some(Arc::new(TxnOutput::from_output_status(output))));
     }
 
-    pub fn module_publishing_may_race(&self) -> bool {
+    pub(crate) fn module_publishing_may_race(&self) -> bool {
         self.module_read_write_intersection.load(Ordering::Acquire)
     }
 
-    pub fn read_set(&self, txn_idx: TxnIndex) -> Option<Arc<Vec<ReadDescriptor<K>>>> {
+    pub(crate) fn read_set(&self, txn_idx: TxnIndex) -> Option<Arc<Vec<ReadDescriptor<K>>>> {
         self.inputs[txn_idx as usize].load_full()
     }
 
     // Extracts a set of paths written or updated during execution from transaction
     // output: (modified by writes, modified by deltas).
-    pub fn modified_keys(&self, txn_idx: TxnIndex) -> KeySet<T> {
+    pub(crate) fn modified_keys(&self, txn_idx: TxnIndex) -> KeySet<T> {
         match &self.outputs[txn_idx as usize].load_full() {
             None => HashSet::new(),
-            Some(txn_output) => match txn_output.as_ref() {
+            Some(txn_output) => match &txn_output.output_status {
                 ExecutionStatus::Success(t) | ExecutionStatus::SkipRest(t) => t
                     .get_writes()
                     .into_iter()
@@ -231,17 +233,72 @@ impl<K: ModulePath, T: TransactionOutput, E: Send + Clone> TxnLastInputOutput<K,
         }
     }
 
+    pub(crate) fn delta_keys(
+        &self,
+        txn_idx: TxnIndex,
+    ) -> (
+        usize,
+        Box<dyn Iterator<Item = <<T as TransactionOutput>::Txn as Transaction>::Key>>,
+    ) {
+        self.outputs[txn_idx as usize].load().as_ref().map_or(
+            (
+                0,
+                Box::new(empty::<<<T as TransactionOutput>::Txn as Transaction>::Key>()),
+            ),
+            |txn_output| match &txn_output.output_status {
+                ExecutionStatus::Success(t) | ExecutionStatus::SkipRest(t) => {
+                    let deltas = t.get_deltas();
+                    return (deltas.len(), Box::new(deltas.into_iter().map(|(k, _)| k)));
+                },
+                ExecutionStatus::Abort(_) => (
+                    0,
+                    Box::new(empty::<<<T as TransactionOutput>::Txn as Transaction>::Key>()),
+                ),
+            },
+        )
+    }
+
+    // Called when a transaction is committed to record WriteOps for materialized aggregator values
+    // corresponding to the (deltas) in the recorded final output of the transaction
+    pub(crate) fn record_delta_writes(
+        &self,
+        txn_idx: TxnIndex,
+        delta_writes: Vec<(<<T as TransactionOutput>::Txn as Transaction>::Key, WriteOp)>,
+    ) {
+        let res = self.outputs[txn_idx as usize]
+            .load_full()
+            .expect("Output must exist")
+            .materialized_deltas
+            .set(delta_writes);
+
+        assert!(
+            res.is_ok(),
+            "Delta writes must be recorded at most once after commit"
+        );
+    }
+
     // Must be executed after parallel execution is done, grabs outputs. Will panic if
     // other outstanding references to the recorded outputs exist.
-    pub fn take_output(&self, txn_idx: TxnIndex) -> ExecutionStatus<T, Error<E>> {
+    pub(crate) fn take_output(
+        &self,
+        txn_idx: TxnIndex,
+    ) -> (
+        ExecutionStatus<T, Error<E>>,
+        Vec<(<<T as TransactionOutput>::Txn as Transaction>::Key, WriteOp)>,
+    ) {
         let owning_ptr = self.outputs[txn_idx as usize]
             .swap(None)
             .expect("Output must be recorded after execution");
 
-        if let Ok(output) = Arc::try_unwrap(owning_ptr) {
-            output
-        } else {
-            unreachable!("Output should be uniquely owned after execution");
+        match Arc::try_unwrap(owning_ptr) {
+            Ok(mut output) => (
+                output.output_status,
+                output
+                    .materialized_deltas
+                    .take()
+                    .unwrap_or_else(|| panic!("No deltas recorded for {}", txn_idx)),
+            ),
+            Err(_) => unreachable!("Output should be uniquely owned after execution"),
         }
     }
 }

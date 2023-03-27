@@ -111,6 +111,11 @@ impl DeltaOp {
     pub fn merge_onto(&mut self, previous_delta: DeltaOp) -> PartialVMResult<()> {
         use DeltaUpdate::*;
 
+        assert_eq!(
+            self.limit, previous_delta.limit,
+            "Cannot merge deltas with different limits",
+        );
+
         // First, update the history values of this delta given that it starts from
         // +value or -value instead of 0. We should do this check to avoid cases like this:
         //
