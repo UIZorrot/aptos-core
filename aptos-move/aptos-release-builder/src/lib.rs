@@ -4,9 +4,10 @@
 pub mod components;
 mod utils;
 pub mod validate;
-pub use components::{ReleaseConfig, ReleaseEntry};
+pub use components::{ExecutionMode, ReleaseConfig, ReleaseEntry};
 use once_cell::sync::Lazy;
 
+// Update me after branch cut.
 const RELEASE_CONFIG: &str = include_str!("../data/release.yaml");
 
 static CURRENT_RELEASE_CONFIG: Lazy<ReleaseConfig> =

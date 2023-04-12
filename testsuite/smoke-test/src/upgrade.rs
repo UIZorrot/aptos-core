@@ -169,10 +169,7 @@ async fn test_upgrade_flow_multi_step() {
     let upgrade_scripts_folder = TempPath::new();
     upgrade_scripts_folder.create_as_dir().unwrap();
 
-    let config = aptos_release_builder::ReleaseConfig {
-        is_multi_step: true,
-        ..Default::default()
-    };
+    let config = aptos_release_builder::ReleaseConfig::default();
 
     config
         .generate_release_proposal_scripts(upgrade_scripts_folder.path())
@@ -285,10 +282,7 @@ async fn test_release_validate_tool_multi_step() {
         }))
         .build_with_cli(2)
         .await;
-    let config = aptos_release_builder::ReleaseConfig {
-        is_multi_step: true,
-        ..Default::default()
-    };
+    let config = aptos_release_builder::ReleaseConfig::default();
 
     let root_key = TempPath::new();
     root_key.create_as_file().unwrap();
@@ -315,6 +309,8 @@ async fn test_release_validate_tool_multi_step() {
             .private_key(),
         framework_git_rev: None,
     };
+
+    network_config.mint_to_validator().await.unwrap();
 
     aptos_release_builder::validate::validate_config(config, network_config)
         .await
