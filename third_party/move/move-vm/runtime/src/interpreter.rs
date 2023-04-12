@@ -551,13 +551,7 @@ impl Interpreter {
                 }
                 Ok(gv)
             },
-            Err(e) => {
-                error!(
-                    "[VM] error loading resource at ({}, {:?}): {:?} from data store",
-                    addr, ty, e
-                );
-                Err(e)
-            },
+            Err(e) => Err(e),
         }
     }
 
