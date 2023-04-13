@@ -39,7 +39,6 @@ pub enum AuthenticationError {
 /// the transaction hash is well-formed and whether the sha3 hash of the
 /// `AccountAuthenticator`'s `AuthenticationKeyPreimage` matches the `AuthenticationKey` stored
 /// under the participating signer's account address.
-
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum TransactionAuthenticator {
     /// Single signature
@@ -97,10 +96,10 @@ impl TransactionAuthenticator {
     pub fn verify(&self, raw_txn: &RawTransaction) -> Result<()> {
         let num_sigs: usize = self.sender().number_of_signatures()
             + self
-                .secondary_signers()
-                .iter()
-                .map(|auth| auth.number_of_signatures())
-                .sum::<usize>();
+            .secondary_signers()
+            .iter()
+            .map(|auth| auth.number_of_signatures())
+            .sum::<usize>();
         if num_sigs > MAX_NUM_OF_SIGS {
             return Err(Error::new(AuthenticationError::MaxSignaturesExceeded));
         }
@@ -127,7 +126,7 @@ impl TransactionAuthenticator {
                     signer.verify(&message)?;
                 }
                 Ok(())
-            },
+            }
         }
     }
 
@@ -191,7 +190,7 @@ impl fmt::Display for TransactionAuthenticator {
                     "TransactionAuthenticator[scheme: Ed25519, sender: {}]",
                     self.sender()
                 )
-            },
+            }
             Self::MultiEd25519 {
                 public_key: _,
                 signature: _,
@@ -201,7 +200,7 @@ impl fmt::Display for TransactionAuthenticator {
                     "TransactionAuthenticator[scheme: MultiEd25519, sender: {}]",
                     self.sender()
                 )
-            },
+            }
             Self::MultiAgent {
                 sender,
                 secondary_signer_addresses,
@@ -224,7 +223,7 @@ impl fmt::Display for TransactionAuthenticator {
                         \tsecondary signers: {}]",
                     sender, sec_addrs, sec_signers,
                 )
-            },
+            }
         }
     }
 }
@@ -247,6 +246,7 @@ pub enum Scheme {
     /// resources accounts. This application serves to domain separate hashes. Without such
     /// separation, an adversary could create (and get a signer for) a these accounts
     /// when a their address matches matches an existing address of a MultiEd25519 wallet.
+    DeriveObjectAddressFromObject = 252,
     DeriveObjectAddressFromGuid = 253,
     DeriveObjectAddressFromSeed = 254,
     DeriveResourceAccountAddress = 255,
@@ -257,6 +257,7 @@ impl fmt::Display for Scheme {
         let display = match self {
             Scheme::Ed25519 => "Ed25519",
             Scheme::MultiEd25519 => "MultiEd25519",
+            Scheme::DeriveObjectAddressFromObject => "DeriveObjectAddressFromObject",
             Scheme::DeriveObjectAddressFromGuid => "DeriveObjectAddressFromGuid",
             Scheme::DeriveObjectAddressFromSeed => "DeriveObjectAddressFromSeed",
             Scheme::DeriveResourceAccountAddress => "DeriveResourceAccountAddress",
@@ -360,17 +361,17 @@ impl AccountAuthenticator {
 /// A struct that represents an account authentication key. An account's address is the last 32
 /// bytes of authentication key used to create it
 #[derive(
-    Clone,
-    Copy,
-    CryptoHasher,
-    Debug,
-    DeserializeKey,
-    Eq,
-    Hash,
-    Ord,
-    PartialEq,
-    PartialOrd,
-    SerializeKey,
+Clone,
+Copy,
+CryptoHasher,
+Debug,
+DeserializeKey,
+Eq,
+Hash,
+Ord,
+PartialEq,
+PartialOrd,
+SerializeKey,
 )]
 #[cfg_attr(any(test, feature = "fuzzing"), derive(Arbitrary))]
 pub struct AuthenticationKey([u8; AuthenticationKey::LENGTH]);

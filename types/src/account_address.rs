@@ -108,8 +108,8 @@ impl From<&AccountAddressWithChecks> for AccountAddress {
 
 impl Serialize for AccountAddressWithChecks {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
+        where
+            S: Serializer,
     {
         self.0.serialize(serializer)
     }
@@ -117,8 +117,8 @@ impl Serialize for AccountAddressWithChecks {
 
 impl<'de> Deserialize<'de> for AccountAddressWithChecks {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
+        where
+            D: Deserializer<'de>,
     {
         Ok(if deserializer.is_human_readable() {
             AccountAddressWithChecks::from_str(&<String>::deserialize(deserializer)?)
@@ -160,6 +160,17 @@ pub fn create_token_address(
     seed.extend(b"::");
     seed.extend(name.as_bytes());
     create_object_address(creator, &seed)
+}
+
+pub fn create_derived_object_address(
+    creator: AccountAddress,
+    object_address: AccountAddress,
+) -> AccountAddress {
+    let mut input = bcs::to_bytes(&creator).unwrap();
+    input.extend(bcs::to_bytes(&object_address).unwrap());
+    input.push(Scheme::DeriveObjectAddressFromObject as u8);
+    let hash = HashValue::sha3_256_of(&input);
+    AccountAddress::from_bytes(hash.as_ref()).unwrap()
 }
 
 pub fn create_object_address(creator: AccountAddress, seed: &[u8]) -> AccountAddress {

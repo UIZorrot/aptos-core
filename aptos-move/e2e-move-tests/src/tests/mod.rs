@@ -10,6 +10,7 @@ mod common;
 mod constructor_args;
 mod error_map;
 mod framework_compatibility;
+mod fungible_asset;
 mod gas;
 mod generate_upgrade_script;
 mod governance_updates;
