@@ -18,7 +18,9 @@ Provides the configuration for staking and rewards
 -  [Function `get_reward_rate`](#0x1_staking_config_get_reward_rate)
 -  [Function `get_voting_power_increase_limit`](#0x1_staking_config_get_voting_power_increase_limit)
 -  [Function `calculate_and_save_latest_epoch_rewards_rate`](#0x1_staking_config_calculate_and_save_latest_epoch_rewards_rate)
+-  [Function `get_latest_reward_rate_from_rewards_config`](#0x1_staking_config_get_latest_reward_rate_from_rewards_config)
 -  [Function `calculate_and_save_latest_rewards_config`](#0x1_staking_config_calculate_and_save_latest_rewards_config)
+-  [Function `get_latest_rewards_config`](#0x1_staking_config_get_latest_rewards_config)
 -  [Function `update_required_stake`](#0x1_staking_config_update_required_stake)
 -  [Function `update_recurring_lockup_duration_secs`](#0x1_staking_config_update_recurring_lockup_duration_secs)
 -  [Function `update_rewards_rate`](#0x1_staking_config_update_rewards_rate)
@@ -34,7 +36,9 @@ Provides the configuration for staking and rewards
     -  [Function `get`](#@Specification_1_get)
     -  [Function `get_reward_rate`](#@Specification_1_get_reward_rate)
     -  [Function `calculate_and_save_latest_epoch_rewards_rate`](#@Specification_1_calculate_and_save_latest_epoch_rewards_rate)
+    -  [Function `get_latest_reward_rate_from_rewards_config`](#@Specification_1_get_latest_reward_rate_from_rewards_config)
     -  [Function `calculate_and_save_latest_rewards_config`](#@Specification_1_calculate_and_save_latest_rewards_config)
+    -  [Function `get_latest_rewards_config`](#@Specification_1_get_latest_rewards_config)
     -  [Function `update_required_stake`](#@Specification_1_update_required_stake)
     -  [Function `update_recurring_lockup_duration_secs`](#@Specification_1_update_recurring_lockup_duration_secs)
     -  [Function `update_rewards_rate`](#@Specification_1_update_rewards_rate)
@@ -550,7 +554,7 @@ Return the reward rate.
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="staking_config.md#0x1_staking_config_get_reward_rate">get_reward_rate</a>(config: &<a href="staking_config.md#0x1_staking_config_StakingConfig">StakingConfig</a>): (u64, u64) {
-    <b>assert</b>!(!<a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_periodical_reward_rate_decrease_enabled">features::periodical_reward_rate_decrease_enabled</a>(), <a href="staking_config.md#0x1_staking_config_EDEPRECATED_FUNCTION">EDEPRECATED_FUNCTION</a>);
+    <b>assert</b>!(!<a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_periodical_reward_rate_decrease_enabled">features::periodical_reward_rate_decrease_enabled</a>(), <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_invalid_state">error::invalid_state</a>(<a href="staking_config.md#0x1_staking_config_EDEPRECATED_FUNCTION">EDEPRECATED_FUNCTION</a>));
     (config.rewards_rate, config.rewards_rate_denominator)
 }
 </code></pre>
@@ -611,6 +615,33 @@ Return the rewards rate of a epoch in the format of (nominator, denominator).
 
 </details>
 
+<a name="0x1_staking_config_get_latest_reward_rate_from_rewards_config"></a>
+
+## Function `get_latest_reward_rate_from_rewards_config`
+
+Calculate the latest reward rate without updating StakingRewardsConfig.
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="staking_config.md#0x1_staking_config_get_latest_reward_rate_from_rewards_config">get_latest_reward_rate_from_rewards_config</a>(): <a href="../../aptos-stdlib/doc/fixed_point64.md#0x1_fixed_point64_FixedPoint64">fixed_point64::FixedPoint64</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="staking_config.md#0x1_staking_config_get_latest_reward_rate_from_rewards_config">get_latest_reward_rate_from_rewards_config</a>(): FixedPoint64 <b>acquires</b> <a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">StakingRewardsConfig</a> {
+    <b>assert</b>!(<a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_periodical_reward_rate_decrease_enabled">features::periodical_reward_rate_decrease_enabled</a>(), <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_invalid_state">error::invalid_state</a>(<a href="staking_config.md#0x1_staking_config_EDISABLED_FUNCTION">EDISABLED_FUNCTION</a>));
+    <b>let</b> latest_config = <a href="staking_config.md#0x1_staking_config_get_latest_rewards_config">get_latest_rewards_config</a>();
+    latest_config.rewards_rate
+}
+</code></pre>
+
+
+
+</details>
+
 <a name="0x1_staking_config_calculate_and_save_latest_rewards_config"></a>
 
 ## Function `calculate_and_save_latest_rewards_config`
@@ -628,35 +659,70 @@ Calculate and return the up-to-date StakingRewardsConfig.
 
 
 <pre><code><b>fun</b> <a href="staking_config.md#0x1_staking_config_calculate_and_save_latest_rewards_config">calculate_and_save_latest_rewards_config</a>(): <a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">StakingRewardsConfig</a> <b>acquires</b> <a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">StakingRewardsConfig</a> {
+    <b>let</b> latest_config = <a href="staking_config.md#0x1_staking_config_get_latest_rewards_config">get_latest_rewards_config</a>();
     <b>let</b> staking_rewards_config = <b>borrow_global_mut</b>&lt;<a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">StakingRewardsConfig</a>&gt;(@aptos_framework);
+    *staking_rewards_config = latest_config;
+    <b>return</b> *staking_rewards_config
+}
+</code></pre>
+
+
+
+</details>
+
+<a name="0x1_staking_config_get_latest_rewards_config"></a>
+
+## Function `get_latest_rewards_config`
+
+Calculate the latest StakingRewardsConfig without updating it.
+
+
+<pre><code><b>fun</b> <a href="staking_config.md#0x1_staking_config_get_latest_rewards_config">get_latest_rewards_config</a>(): <a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">staking_config::StakingRewardsConfig</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>fun</b> <a href="staking_config.md#0x1_staking_config_get_latest_rewards_config">get_latest_rewards_config</a>(): <a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">StakingRewardsConfig</a> <b>acquires</b> <a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">StakingRewardsConfig</a> {
+    <b>let</b> existing_config = <b>borrow_global</b>&lt;<a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">StakingRewardsConfig</a>&gt;(@aptos_framework);
+    <b>let</b> latest_config = <a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">StakingRewardsConfig</a> {
+        rewards_rate: existing_config.rewards_rate,
+        min_rewards_rate: existing_config.min_rewards_rate,
+        rewards_rate_period_in_secs: existing_config.rewards_rate_period_in_secs,
+        last_rewards_rate_period_start_in_secs: existing_config.last_rewards_rate_period_start_in_secs,
+        rewards_rate_decrease_rate: existing_config.rewards_rate_decrease_rate,
+    };
     <b>let</b> current_time_in_secs = <a href="timestamp.md#0x1_timestamp_now_seconds">timestamp::now_seconds</a>();
     <b>assert</b>!(
-        current_time_in_secs &gt;= staking_rewards_config.last_rewards_rate_period_start_in_secs,
+        current_time_in_secs &gt;= latest_config.last_rewards_rate_period_start_in_secs,
         <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_invalid_argument">error::invalid_argument</a>(<a href="staking_config.md#0x1_staking_config_EINVALID_LAST_REWARDS_RATE_PERIOD_START">EINVALID_LAST_REWARDS_RATE_PERIOD_START</a>)
     );
-    <b>if</b> (current_time_in_secs - staking_rewards_config.last_rewards_rate_period_start_in_secs &lt; staking_rewards_config.rewards_rate_period_in_secs) {
-        <b>return</b> *staking_rewards_config
+    <b>if</b> (current_time_in_secs - latest_config.last_rewards_rate_period_start_in_secs &lt; latest_config.rewards_rate_period_in_secs) {
+        <b>return</b> latest_config
     };
     // Rewards rate decrease rate cannot be greater than 100%. Otherwise rewards rate will be negative.
     <b>assert</b>!(
-        <a href="../../aptos-stdlib/doc/fixed_point64.md#0x1_fixed_point64_ceil">fixed_point64::ceil</a>(staking_rewards_config.rewards_rate_decrease_rate) &lt;= 1,
+        <a href="../../aptos-stdlib/doc/fixed_point64.md#0x1_fixed_point64_ceil">fixed_point64::ceil</a>(latest_config.rewards_rate_decrease_rate) &lt;= 1,
         <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_invalid_argument">error::invalid_argument</a>(<a href="staking_config.md#0x1_staking_config_EINVALID_REWARDS_RATE_DECREASE_RATE">EINVALID_REWARDS_RATE_DECREASE_RATE</a>)
     );
     <b>let</b> new_rate = <a href="../../aptos-stdlib/doc/math_fixed64.md#0x1_math_fixed64_mul_div">math_fixed64::mul_div</a>(
-        staking_rewards_config.rewards_rate,
+        latest_config.rewards_rate,
         <a href="../../aptos-stdlib/doc/fixed_point64.md#0x1_fixed_point64_sub">fixed_point64::sub</a>(
             <a href="../../aptos-stdlib/doc/fixed_point64.md#0x1_fixed_point64_create_from_u128">fixed_point64::create_from_u128</a>(1),
-            staking_rewards_config.rewards_rate_decrease_rate,
+            latest_config.rewards_rate_decrease_rate,
         ),
         <a href="../../aptos-stdlib/doc/fixed_point64.md#0x1_fixed_point64_create_from_u128">fixed_point64::create_from_u128</a>(1),
     );
-    new_rate = <a href="../../aptos-stdlib/doc/fixed_point64.md#0x1_fixed_point64_max">fixed_point64::max</a>(new_rate, staking_rewards_config.min_rewards_rate);
+    new_rate = <a href="../../aptos-stdlib/doc/fixed_point64.md#0x1_fixed_point64_max">fixed_point64::max</a>(new_rate, latest_config.min_rewards_rate);
 
-    staking_rewards_config.rewards_rate = new_rate;
-    staking_rewards_config.last_rewards_rate_period_start_in_secs =
-        staking_rewards_config.last_rewards_rate_period_start_in_secs +
-        staking_rewards_config.rewards_rate_period_in_secs;
-    <b>return</b> *staking_rewards_config
+    latest_config.rewards_rate = new_rate;
+    latest_config.last_rewards_rate_period_start_in_secs =
+        latest_config.last_rewards_rate_period_start_in_secs +
+            latest_config.rewards_rate_period_in_secs;
+    <b>return</b> latest_config
 }
 </code></pre>
 
@@ -1146,7 +1212,7 @@ StakingRewardsConfig does not exist under the aptos_framework before creating it
 
 
 
-<pre><code><b>aborts_if</b> <a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_spec_reward_rate_decrease_enabled">features::spec_reward_rate_decrease_enabled</a>();
+<pre><code><b>aborts_if</b> <a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_spec_periodical_reward_rate_decrease_enabled">features::spec_periodical_reward_rate_decrease_enabled</a>();
 </code></pre>
 
 
@@ -1163,7 +1229,25 @@ StakingRewardsConfig does not exist under the aptos_framework before creating it
 
 
 <pre><code><b>aborts_if</b> !<b>exists</b>&lt;<a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">StakingRewardsConfig</a>&gt;(@aptos_framework);
-<b>aborts_if</b> !<a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_spec_reward_rate_decrease_enabled">features::spec_reward_rate_decrease_enabled</a>();
+<b>aborts_if</b> !<a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_spec_periodical_reward_rate_decrease_enabled">features::spec_periodical_reward_rate_decrease_enabled</a>();
+<b>include</b> <a href="staking_config.md#0x1_staking_config_StakingRewardsConfigRequirement">StakingRewardsConfigRequirement</a>;
+</code></pre>
+
+
+
+<a name="@Specification_1_get_latest_reward_rate_from_rewards_config"></a>
+
+### Function `get_latest_reward_rate_from_rewards_config`
+
+
+<pre><code><b>public</b> <b>fun</b> <a href="staking_config.md#0x1_staking_config_get_latest_reward_rate_from_rewards_config">get_latest_reward_rate_from_rewards_config</a>(): <a href="../../aptos-stdlib/doc/fixed_point64.md#0x1_fixed_point64_FixedPoint64">fixed_point64::FixedPoint64</a>
+</code></pre>
+
+
+
+
+<pre><code><b>aborts_if</b> !<b>exists</b>&lt;<a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">StakingRewardsConfig</a>&gt;(@aptos_framework);
+<b>aborts_if</b> !<a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_spec_periodical_reward_rate_decrease_enabled">features::spec_periodical_reward_rate_decrease_enabled</a>();
 <b>include</b> <a href="staking_config.md#0x1_staking_config_StakingRewardsConfigRequirement">StakingRewardsConfigRequirement</a>;
 </code></pre>
 
@@ -1180,7 +1264,25 @@ StakingRewardsConfig does not exist under the aptos_framework before creating it
 
 
 
-<pre><code><b>requires</b> <a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_spec_reward_rate_decrease_enabled">features::spec_reward_rate_decrease_enabled</a>();
+<pre><code><b>requires</b> <a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_spec_periodical_reward_rate_decrease_enabled">features::spec_periodical_reward_rate_decrease_enabled</a>();
+<b>include</b> <a href="staking_config.md#0x1_staking_config_StakingRewardsConfigRequirement">StakingRewardsConfigRequirement</a>;
+<b>aborts_if</b> !<b>exists</b>&lt;<a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">StakingRewardsConfig</a>&gt;(@aptos_framework);
+</code></pre>
+
+
+
+<a name="@Specification_1_get_latest_rewards_config"></a>
+
+### Function `get_latest_rewards_config`
+
+
+<pre><code><b>fun</b> <a href="staking_config.md#0x1_staking_config_get_latest_rewards_config">get_latest_rewards_config</a>(): <a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">staking_config::StakingRewardsConfig</a>
+</code></pre>
+
+
+
+
+<pre><code><b>requires</b> <a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_spec_periodical_reward_rate_decrease_enabled">features::spec_periodical_reward_rate_decrease_enabled</a>();
 <b>include</b> <a href="staking_config.md#0x1_staking_config_StakingRewardsConfigRequirement">StakingRewardsConfigRequirement</a>;
 <b>aborts_if</b> !<b>exists</b>&lt;<a href="staking_config.md#0x1_staking_config_StakingRewardsConfig">StakingRewardsConfig</a>&gt;(@aptos_framework);
 </code></pre>
@@ -1247,7 +1349,7 @@ The <code>rewards_rate</code> which is the numerator is limited to be <code>&lt;
 rewards_rate/rewards_rate_denominator <= 1.
 
 
-<pre><code><b>aborts_if</b> <a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_spec_reward_rate_decrease_enabled">features::spec_reward_rate_decrease_enabled</a>();
+<pre><code><b>aborts_if</b> <a href="../../aptos-stdlib/../move-stdlib/doc/features.md#0x1_features_spec_periodical_reward_rate_decrease_enabled">features::spec_periodical_reward_rate_decrease_enabled</a>();
 <b>let</b> addr = <a href="../../aptos-stdlib/../move-stdlib/doc/signer.md#0x1_signer_address_of">signer::address_of</a>(aptos_framework);
 <b>aborts_if</b> addr != @aptos_framework;
 <b>aborts_if</b> new_rewards_rate_denominator &lt;= 0;

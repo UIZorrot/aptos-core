@@ -247,6 +247,10 @@ spec aptos_framework::stake {
         );
     }
 
+    spec get_reward_rate {
+        include staking_config::StakingRewardsConfigRequirement;
+    }
+
     spec add_stake_with_cap {
         include ResourceRequirement;
     }
@@ -348,7 +352,7 @@ spec aptos_framework::stake {
         requires exists<ValidatorPerformance>(@aptos_framework);
         requires exists<ValidatorSet>(@aptos_framework);
         requires exists<StakingConfig>(@aptos_framework);
-        requires exists<StakingRewardsConfig>(@aptos_framework) || !features::spec_reward_rate_decrease_enabled();
+        requires exists<StakingRewardsConfig>(@aptos_framework) || !features::spec_periodical_reward_rate_decrease_enabled();
         requires exists<timestamp::CurrentTimeMicroseconds>(@aptos_framework);
         requires exists<ValidatorFees>(@aptos_framework);
     }

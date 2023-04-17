@@ -186,7 +186,7 @@ module aptos_framework::staking_config {
     /// DEPRECATING
     /// Return the reward rate.
     public fun get_reward_rate(config: &StakingConfig): (u64, u64) {
-        assert!(!features::periodical_reward_rate_decrease_enabled(), EDEPRECATED_FUNCTION);
+        assert!(!features::periodical_reward_rate_decrease_enabled(), error::invalid_state(EDEPRECATED_FUNCTION));
         (config.rewards_rate, config.rewards_rate_denominator)
     }
 
@@ -202,37 +202,60 @@ module aptos_framework::staking_config {
         staking_rewards_config.rewards_rate
     }
 
+    #[view]
+    /// Calculate the latest reward rate without updating StakingRewardsConfig.
+    public fun get_latest_reward_rate_from_rewards_config(): FixedPoint64 acquires StakingRewardsConfig {
+        assert!(features::periodical_reward_rate_decrease_enabled(), error::invalid_state(EDISABLED_FUNCTION));
+        let latest_config = get_latest_rewards_config();
+        latest_config.rewards_rate
+    }
+
     /// Calculate and return the up-to-date StakingRewardsConfig.
     fun calculate_and_save_latest_rewards_config(): StakingRewardsConfig acquires StakingRewardsConfig {
+        let latest_config = get_latest_rewards_config();
         let staking_rewards_config = borrow_global_mut<StakingRewardsConfig>(@aptos_framework);
+        *staking_rewards_config = latest_config;
+        return *staking_rewards_config
+    }
+
+    /// Calculate the latest StakingRewardsConfig without updating it.
+    fun get_latest_rewards_config(): StakingRewardsConfig acquires StakingRewardsConfig {
+        let existing_config = borrow_global<StakingRewardsConfig>(@aptos_framework);
+        let latest_config = StakingRewardsConfig {
+            rewards_rate: existing_config.rewards_rate,
+            min_rewards_rate: existing_config.min_rewards_rate,
+            rewards_rate_period_in_secs: existing_config.rewards_rate_period_in_secs,
+            last_rewards_rate_period_start_in_secs: existing_config.last_rewards_rate_period_start_in_secs,
+            rewards_rate_decrease_rate: existing_config.rewards_rate_decrease_rate,
+        };
         let current_time_in_secs = timestamp::now_seconds();
         assert!(
-            current_time_in_secs >= staking_rewards_config.last_rewards_rate_period_start_in_secs,
+            current_time_in_secs >= latest_config.last_rewards_rate_period_start_in_secs,
             error::invalid_argument(EINVALID_LAST_REWARDS_RATE_PERIOD_START)
         );
-        if (current_time_in_secs - staking_rewards_config.last_rewards_rate_period_start_in_secs < staking_rewards_config.rewards_rate_period_in_secs) {
-            return *staking_rewards_config
+        if (current_time_in_secs - latest_config.last_rewards_rate_period_start_in_secs < latest_config.rewards_rate_period_in_secs) {
+            return latest_config
         };
         // Rewards rate decrease rate cannot be greater than 100%. Otherwise rewards rate will be negative.
         assert!(
-            fixed_point64::ceil(staking_rewards_config.rewards_rate_decrease_rate) <= 1,
+            fixed_point64::ceil(latest_config.rewards_rate_decrease_rate) <= 1,
             error::invalid_argument(EINVALID_REWARDS_RATE_DECREASE_RATE)
         );
         let new_rate = math_fixed64::mul_div(
-            staking_rewards_config.rewards_rate,
+            latest_config.rewards_rate,
             fixed_point64::sub(
                 fixed_point64::create_from_u128(1),
-                staking_rewards_config.rewards_rate_decrease_rate,
+                latest_config.rewards_rate_decrease_rate,
             ),
             fixed_point64::create_from_u128(1),
         );
-        new_rate = fixed_point64::max(new_rate, staking_rewards_config.min_rewards_rate);
+        new_rate = fixed_point64::max(new_rate, latest_config.min_rewards_rate);
 
-        staking_rewards_config.rewards_rate = new_rate;
-        staking_rewards_config.last_rewards_rate_period_start_in_secs =
-            staking_rewards_config.last_rewards_rate_period_start_in_secs +
-            staking_rewards_config.rewards_rate_period_in_secs;
-        return *staking_rewards_config
+        latest_config.rewards_rate = new_rate;
+        latest_config.last_rewards_rate_period_start_in_secs =
+            latest_config.last_rewards_rate_period_start_in_secs +
+                latest_config.rewards_rate_period_in_secs;
+        return latest_config
     }
 
     /// Update the min and max stake amounts.

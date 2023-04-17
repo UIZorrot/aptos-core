@@ -398,6 +398,30 @@ module aptos_framework::stake {
     }
 
     #[view]
+    /// Return the current rewards rate of a epoch in the format of (nominator, denominator).
+    public fun get_reward_rate(): (u64, u64) {
+        let (rewards_rate, rewards_rate_denominator) = if (features::periodical_reward_rate_decrease_enabled()) {
+            let epoch_rewards_rate = staking_config::get_latest_reward_rate_from_rewards_config();
+            if (fixed_point64::is_zero(epoch_rewards_rate)) {
+                (0u64, 1u64)
+            } else {
+                // Maximize denominator for higher precision.
+                // Restriction: nominator <= MAX_REWARDS_RATE && denominator <= MAX_U64
+                let denominator = fixed_point64::divide_u128((MAX_REWARDS_RATE as u128), epoch_rewards_rate);
+                if (denominator > MAX_U64) {
+                    denominator = MAX_U64
+                };
+                let nominator = (fixed_point64::multiply_u128(denominator, epoch_rewards_rate) as u64);
+                (nominator, (denominator as u64))
+            }
+        } else {
+            let staking_config = staking_config::get();
+            staking_config::get_reward_rate(&staking_config)
+        };
+        (rewards_rate, rewards_rate_denominator)
+    }
+
+    #[view]
     public fun stake_pool_exists(addr: address): bool {
         exists<StakePool>(addr)
     }
@@ -1045,7 +1069,7 @@ module aptos_framework::stake {
         let len = vector::length(&validator_set.active_validators);
         while (i < len) {
             let validator = vector::borrow(&validator_set.active_validators, i);
-            update_stake_pool(validator_perf, validator.addr, &config);
+            update_stake_pool(validator_perf, validator.addr);
             i = i + 1;
         };
 
@@ -1055,7 +1079,7 @@ module aptos_framework::stake {
         let len = vector::length(&validator_set.pending_inactive);
         while (i < len) {
             let validator = vector::borrow(&validator_set.pending_inactive, i);
-            update_stake_pool(validator_perf, validator.addr, &config);
+            update_stake_pool(validator_perf, validator.addr);
             i = i + 1;
         };
 
@@ -1151,7 +1175,6 @@ module aptos_framework::stake {
     fun update_stake_pool(
         validator_perf: &ValidatorPerformance,
         pool_address: address,
-        staking_config: &StakingConfig,
     ) acquires StakePool, AptosCoinCapabilities, ValidatorConfig, ValidatorFees {
         let stake_pool = borrow_global_mut<StakePool>(pool_address);
         let validator_config = borrow_global<ValidatorConfig>(pool_address);
@@ -1163,23 +1186,10 @@ module aptos_framework::stake {
             assume cur_validator_perf.successful_proposals + cur_validator_perf.failed_proposals <= MAX_U64;
         };
         let num_total_proposals = cur_validator_perf.successful_proposals + cur_validator_perf.failed_proposals;
-        let (rewards_rate, rewards_rate_denominator) = if (features::periodical_reward_rate_decrease_enabled()) {
-            let epoch_rewards_rate = staking_config::calculate_and_save_latest_epoch_rewards_rate();
-            if (fixed_point64::is_zero(epoch_rewards_rate)) {
-                (0u64, 1u64)
-            } else {
-                // Maximize denominator for higher precision.
-                // Restriction: nominator <= MAX_REWARDS_RATE && denominator <= MAX_U64
-                let denominator = fixed_point64::divide_u128((MAX_REWARDS_RATE as u128), epoch_rewards_rate);
-                if (denominator > MAX_U64) {
-                    denominator = MAX_U64
-                };
-                let nominator = (fixed_point64::multiply_u128(denominator, epoch_rewards_rate) as u64);
-                (nominator, (denominator as u64))
-            }
-        } else {
-            staking_config::get_reward_rate(staking_config)
+        if (features::periodical_reward_rate_decrease_enabled()) {
+            staking_config::calculate_and_save_latest_epoch_rewards_rate();
         };
+        let (rewards_rate, rewards_rate_denominator) = get_reward_rate();
         let rewards_active = distribute_rewards(
             &mut stake_pool.active,
             num_successful_proposals,
