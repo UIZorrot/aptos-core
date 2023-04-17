@@ -14,12 +14,20 @@ import { HexString } from "../../utils";
 import { getFaucetClient, longTestTimeout, NODE_URL } from "../unit/test_helper.test";
 import { bcsSerializeUint64, bcsToBytes } from "../../bcs";
 import { Ed25519PublicKey } from "../../aptos_types";
+import { VERSION } from "../../version";
 
 const account = "0x1::account::Account";
 
 const aptosCoin = "0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>";
 
 const coinTransferFunction = "0x1::coin::transfer";
+
+test.only("call should include X-Aptos-Client header", async () => {
+  const client = new AptosClient(NODE_URL, { HEADERS: { my: "header" } });
+  const heders = client.client.request.config.HEADERS;
+  expect(heders).toHaveProperty("X-Aptos-Client", `aptos-ts-sdk/${VERSION}`);
+  expect(heders).toHaveProperty("my", "header");
+});
 
 test("node url empty", () => {
   expect(() => {
