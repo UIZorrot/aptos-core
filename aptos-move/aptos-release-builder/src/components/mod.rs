@@ -193,7 +193,7 @@ impl ReleaseEntry {
                     for b in execution_hash.iter() {
                         hash_string.push_str(format!("{}u8,", b).as_str());
                     }
-                    hash_string.push_str("]");
+                    hash_string.push(']');
 
                     let mut data = HashMap::new();
                     data.insert("signer_hash", hash_string);

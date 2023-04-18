@@ -11,8 +11,17 @@ use aptos_crypto::ValidCryptoMaterialStringExt;
 use aptos_forge::Swarm;
 use aptos_gas::{AptosGasParameters, GasQuantity, InitialGasSchedule, ToOnChainGasSchedule};
 use aptos_keygen::KeyGen;
-use aptos_release_builder::components::gas::generate_gas_upgrade_proposal;
+use aptos_release_builder::{
+    components::{
+        feature_flags::{FeatureFlag, Features},
+        framework::FrameworkReleaseConfig,
+        gas::generate_gas_upgrade_proposal,
+        ExecutionMode, Proposal,
+    },
+    ReleaseEntry,
+};
 use aptos_temppath::TempPath;
+use aptos_types::on_chain_config::OnChainConsensusConfig;
 use std::{fs, path::PathBuf, process::Command, sync::Arc, thread, time::Duration};
 
 // TODO: currently fails when quorum store is enabled by hard-coding. Investigate why.
@@ -91,7 +100,41 @@ async fn test_upgrade_flow() {
     let upgrade_scripts_folder = TempPath::new();
     upgrade_scripts_folder.create_as_dir().unwrap();
 
-    let config = aptos_release_builder::ReleaseConfig::default();
+    let config = aptos_release_builder::ReleaseConfig {
+        remote_endpoint: None,
+        proposals: vec![
+            Proposal {
+                execution_mode: ExecutionMode::MultiStep,
+                name: "framework".to_string(),
+                description: "Update to latest framework".to_string(),
+                update_sequence: vec![ReleaseEntry::Framework(FrameworkReleaseConfig {
+                    bytecode_version: 6, // TODO: remove explicit bytecode version from sources
+                    git_hash: None,
+                })],
+            },
+            Proposal {
+                execution_mode: ExecutionMode::SingleStep,
+                name: "gas".to_string(),
+                description: "Update to latest gas schedule".to_string(),
+                update_sequence: vec![ReleaseEntry::DefaultGas],
+            },
+            Proposal {
+                execution_mode: ExecutionMode::MultiStep,
+                name: "feature_flags".to_string(),
+                description: "Update to latest feature_flag".to_string(),
+                update_sequence: vec![
+                    ReleaseEntry::FeatureFlag(Features {
+                        enabled: aptos_vm_genesis::default_features()
+                            .into_iter()
+                            .map(FeatureFlag::from)
+                            .collect(),
+                        disabled: vec![],
+                    }),
+                    ReleaseEntry::Consensus(OnChainConsensusConfig::default()),
+                ],
+            },
+        ],
+    };
 
     config
         .generate_release_proposal_scripts(upgrade_scripts_folder.path())
