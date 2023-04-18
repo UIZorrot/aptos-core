@@ -104,7 +104,7 @@ async fn test_upgrade_flow() {
         remote_endpoint: None,
         proposals: vec![
             Proposal {
-                execution_mode: ExecutionMode::MultiStep,
+                execution_mode: ExecutionMode::RootSigner,
                 name: "framework".to_string(),
                 description: "Update to latest framework".to_string(),
                 update_sequence: vec![ReleaseEntry::Framework(FrameworkReleaseConfig {
@@ -113,13 +113,13 @@ async fn test_upgrade_flow() {
                 })],
             },
             Proposal {
-                execution_mode: ExecutionMode::SingleStep,
+                execution_mode: ExecutionMode::RootSigner,
                 name: "gas".to_string(),
                 description: "Update to latest gas schedule".to_string(),
                 update_sequence: vec![ReleaseEntry::DefaultGas],
             },
             Proposal {
-                execution_mode: ExecutionMode::MultiStep,
+                execution_mode: ExecutionMode::RootSigner,
                 name: "feature_flags".to_string(),
                 description: "Update to latest feature_flag".to_string(),
                 update_sequence: vec![
