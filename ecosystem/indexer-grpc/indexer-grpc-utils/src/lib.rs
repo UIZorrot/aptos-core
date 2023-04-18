@@ -6,14 +6,14 @@ pub mod config;
 pub mod constants;
 pub mod file_store_operator;
 
-use aptos_protos::datastream::v1::indexer_stream_client::IndexerStreamClient;
+use aptos_protos::internal::fullnode::v1::fullnode_data_client::FullnodeDataClient;
 
-pub type GrpcClientType = IndexerStreamClient<tonic::transport::Channel>;
+pub type GrpcClientType = FullnodeDataClient<tonic::transport::Channel>;
 
 /// Create a gRPC client with exponential backoff.
 pub async fn create_grpc_client(address: String) -> GrpcClientType {
     backoff::future::retry(backoff::ExponentialBackoff::default(), || async {
-        match IndexerStreamClient::connect(address.clone()).await {
+        match FullnodeDataClient::connect(address.clone()).await {
             Ok(client) => {
                 aptos_logger::info!(
                     address = address.clone(),

@@ -23,13 +23,8 @@ use anyhow::Context;
 use aptos_indexer_grpc_utils::{config::IndexerGrpcProcessorConfig, constants::BLOB_STORAGE_SIZE};
 use aptos_logger::{error, info};
 use aptos_moving_average::MovingAverage;
-use aptos_protos::{
-    datastream::v1::{
-        indexer_stream_client::IndexerStreamClient,
-        raw_datastream_response::{self, Response},
-        RawDatastreamRequest, RawDatastreamResponse,
-    },
-    transaction::testing1::v1::Transaction as TransactionProto,
+use aptos_protos::indexer::v1::{
+    indexer_data_client::IndexerDataClient, GetTransactionsRequest, GetTransactionsResponse,
 };
 use diesel::{
     pg::PgConnection,
@@ -37,7 +32,6 @@ use diesel::{
 };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 use futures::StreamExt;
-use prost::Message;
 use std::sync::Arc;
 
 pub type PgPool = diesel::r2d2::Pool<ConnectionManager<PgConnection>>;
@@ -80,7 +74,7 @@ impl Worker {
             "[Parser] Connecting to GRPC endpoint",
         );
 
-        let mut rpc_client = match IndexerStreamClient::connect(format!(
+        let mut rpc_client = match IndexerDataClient::connect(format!(
             "http://{}",
             self.config.indexer_grpc_address.clone()
         ))
@@ -144,7 +138,7 @@ impl Worker {
         );
 
         let mut resp_stream = rpc_client
-            .raw_datastream(request)
+            .get_transactions(request)
             .await
             .expect("Failed to get grpc response. Is the server running?")
             .into_inner();
@@ -212,7 +206,7 @@ impl Worker {
                             self.config.indexer_grpc_auth_token.clone(),
                         );
                         resp_stream = rpc_client
-                            .raw_datastream(request)
+                            .get_transactions(request)
                             .await
                             .expect("Failed to get grpc response. Is the server running?")
                             .into_inner();
@@ -220,18 +214,8 @@ impl Worker {
                         continue;
                     },
                 };
-                // We only care about stream with transactions
-                let transactions = if let Response::Data(txns) = next_stream.response.unwrap() {
-                    txns.transactions
-                        .into_iter()
-                        .map(|e| {
-                            let txn_raw = base64::decode(e.encoded_proto_data).unwrap();
-                            TransactionProto::decode(&*txn_raw).unwrap()
-                        })
-                        .collect::<Vec<TransactionProto>>()
-                } else {
-                    continue;
-                };
+                let transactions = next_stream.transactions;
+
                 let current_batch_size = transactions.len();
                 if current_batch_size == 0 {
                     error!(
@@ -401,26 +385,27 @@ impl Worker {
     /// GRPC validation
     pub async fn validate_grpc_chain_id(
         &self,
-        init_signal: RawDatastreamResponse,
+        response: GetTransactionsResponse,
     ) -> anyhow::Result<()> {
-        match init_signal.response {
-            Some(raw_datastream_response::Response::Status(_)) => {
-                let grpc_chain_id = init_signal.chain_id;
-                let _chain_id = self.check_or_update_chain_id(grpc_chain_id as i64).await?;
-                Ok(())
-            },
-            _ => anyhow::bail!("Grpc first response is not a init signal"),
-        }
+        let grpc_chain_id = response
+            .chain_metadata
+            .as_ref()
+            .ok_or_else(|| anyhow::Error::msg("Chain Medata doesn't exist."))?
+            .chain_id
+            .ok_or_else(|| anyhow::Error::msg("Chain Id doesn't exist."))?;
+        let _chain_id = self.check_or_update_chain_id(grpc_chain_id as i64).await?;
+        Ok(())
     }
 }
 
 pub fn grpc_request_builder(
     starting_version: u64,
     grpc_auth_token: String,
-) -> tonic::Request<RawDatastreamRequest> {
-    let mut request = tonic::Request::new(RawDatastreamRequest {
+) -> tonic::Request<GetTransactionsRequest> {
+    let mut request = tonic::Request::new(GetTransactionsRequest {
         starting_version: Some(starting_version),
         transactions_count: None,
+        ..GetTransactionsRequest::default()
     });
     request.metadata_mut().insert(
         aptos_indexer_grpc_utils::constants::GRPC_AUTH_TOKEN_HEADER,

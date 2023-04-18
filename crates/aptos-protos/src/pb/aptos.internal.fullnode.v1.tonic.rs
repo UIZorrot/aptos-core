@@ -2,16 +2,16 @@
 
 // @generated
 /// Generated client implementations.
-pub mod indexer_data_service_client {
+pub mod fullnode_data_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
     use tonic::codegen::http::Uri;
     ///
     #[derive(Debug, Clone)]
-    pub struct IndexerDataServiceClient<T> {
+    pub struct FullnodeDataClient<T> {
         inner: tonic::client::Grpc<T>,
     }
-    impl IndexerDataServiceClient<tonic::transport::Channel> {
+    impl FullnodeDataClient<tonic::transport::Channel> {
         /// Attempt to create a new client by connecting to a given endpoint.
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
@@ -22,7 +22,7 @@ pub mod indexer_data_service_client {
             Ok(Self::new(conn))
         }
     }
-    impl<T> IndexerDataServiceClient<T>
+    impl<T> FullnodeDataClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
         T::Error: Into<StdError>,
@@ -40,7 +40,7 @@ pub mod indexer_data_service_client {
         pub fn with_interceptor<F>(
             inner: T,
             interceptor: F,
-        ) -> IndexerDataServiceClient<InterceptedService<T, F>>
+        ) -> FullnodeDataClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
@@ -54,7 +54,7 @@ pub mod indexer_data_service_client {
                 http::Request<tonic::body::BoxBody>,
             >>::Error: Into<StdError> + Send + Sync,
         {
-            IndexerDataServiceClient::new(InterceptedService::new(inner, interceptor))
+            FullnodeDataClient::new(InterceptedService::new(inner, interceptor))
         }
         /// Compress requests with the given encoding.
         ///
@@ -71,12 +71,16 @@ pub mod indexer_data_service_client {
             self.inner = self.inner.accept_compressed(encoding);
             self
         }
-        /** Get transactions without any filtering from starting version and end if transaction count is present.
-*/
-        pub async fn get_transactions(
+        ///
+        pub async fn get_transactions_from_node(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetTransactionsRequest>,
-        ) -> Result<tonic::Response<super::GetTransactionsResponse>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::GetTransactionsFromNodeRequest>,
+        ) -> Result<
+            tonic::Response<
+                tonic::codec::Streaming<super::GetTransactionsFromNodeResponse>,
+            >,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -88,35 +92,40 @@ pub mod indexer_data_service_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/aptos.indexer_data.v1.IndexerDataService/GetTransactions",
+                "/aptos.internal.fullnode.v1.FullnodeData/GetTransactionsFromNode",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            self.inner.server_streaming(request.into_request(), path, codec).await
         }
     }
 }
 /// Generated server implementations.
-pub mod indexer_data_service_server {
+pub mod fullnode_data_server {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
-    ///Generated trait containing gRPC methods that should be implemented for use with IndexerDataServiceServer.
+    ///Generated trait containing gRPC methods that should be implemented for use with FullnodeDataServer.
     #[async_trait]
-    pub trait IndexerDataService: Send + Sync + 'static {
-        /** Get transactions without any filtering from starting version and end if transaction count is present.
-*/
-        async fn get_transactions(
+    pub trait FullnodeData: Send + Sync + 'static {
+        ///Server streaming response type for the GetTransactionsFromNode method.
+        type GetTransactionsFromNodeStream: futures_core::Stream<
+                Item = Result<super::GetTransactionsFromNodeResponse, tonic::Status>,
+            >
+            + Send
+            + 'static;
+        ///
+        async fn get_transactions_from_node(
             &self,
-            request: tonic::Request<super::GetTransactionsRequest>,
-        ) -> Result<tonic::Response<super::GetTransactionsResponse>, tonic::Status>;
+            request: tonic::Request<super::GetTransactionsFromNodeRequest>,
+        ) -> Result<tonic::Response<Self::GetTransactionsFromNodeStream>, tonic::Status>;
     }
     ///
     #[derive(Debug)]
-    pub struct IndexerDataServiceServer<T: IndexerDataService> {
+    pub struct FullnodeDataServer<T: FullnodeData> {
         inner: _Inner<T>,
         accept_compression_encodings: EnabledCompressionEncodings,
         send_compression_encodings: EnabledCompressionEncodings,
     }
     struct _Inner<T>(Arc<T>);
-    impl<T: IndexerDataService> IndexerDataServiceServer<T> {
+    impl<T: FullnodeData> FullnodeDataServer<T> {
         pub fn new(inner: T) -> Self {
             Self::from_arc(Arc::new(inner))
         }
@@ -150,9 +159,9 @@ pub mod indexer_data_service_server {
             self
         }
     }
-    impl<T, B> tonic::codegen::Service<http::Request<B>> for IndexerDataServiceServer<T>
+    impl<T, B> tonic::codegen::Service<http::Request<B>> for FullnodeDataServer<T>
     where
-        T: IndexerDataService,
+        T: FullnodeData,
         B: Body + Send + 'static,
         B::Error: Into<StdError> + Send + 'static,
     {
@@ -168,25 +177,29 @@ pub mod indexer_data_service_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/aptos.indexer_data.v1.IndexerDataService/GetTransactions" => {
+                "/aptos.internal.fullnode.v1.FullnodeData/GetTransactionsFromNode" => {
                     #[allow(non_camel_case_types)]
-                    struct GetTransactionsSvc<T: IndexerDataService>(pub Arc<T>);
+                    struct GetTransactionsFromNodeSvc<T: FullnodeData>(pub Arc<T>);
                     impl<
-                        T: IndexerDataService,
-                    > tonic::server::UnaryService<super::GetTransactionsRequest>
-                    for GetTransactionsSvc<T> {
-                        type Response = super::GetTransactionsResponse;
+                        T: FullnodeData,
+                    > tonic::server::ServerStreamingService<
+                        super::GetTransactionsFromNodeRequest,
+                    > for GetTransactionsFromNodeSvc<T> {
+                        type Response = super::GetTransactionsFromNodeResponse;
+                        type ResponseStream = T::GetTransactionsFromNodeStream;
                         type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
+                            tonic::Response<Self::ResponseStream>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetTransactionsRequest>,
+                            request: tonic::Request<
+                                super::GetTransactionsFromNodeRequest,
+                            >,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).get_transactions(request).await
+                                (*inner).get_transactions_from_node(request).await
                             };
                             Box::pin(fut)
                         }
@@ -196,14 +209,14 @@ pub mod indexer_data_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = GetTransactionsSvc(inner);
+                        let method = GetTransactionsFromNodeSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
                             );
-                        let res = grpc.unary(method, req).await;
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
@@ -223,7 +236,7 @@ pub mod indexer_data_service_server {
             }
         }
     }
-    impl<T: IndexerDataService> Clone for IndexerDataServiceServer<T> {
+    impl<T: FullnodeData> Clone for FullnodeDataServer<T> {
         fn clone(&self) -> Self {
             let inner = self.inner.clone();
             Self {
@@ -233,7 +246,7 @@ pub mod indexer_data_service_server {
             }
         }
     }
-    impl<T: IndexerDataService> Clone for _Inner<T> {
+    impl<T: FullnodeData> Clone for _Inner<T> {
         fn clone(&self) -> Self {
             Self(self.0.clone())
         }
@@ -243,8 +256,7 @@ pub mod indexer_data_service_server {
             write!(f, "{:?}", self.0)
         }
     }
-    impl<T: IndexerDataService> tonic::server::NamedService
-    for IndexerDataServiceServer<T> {
-        const NAME: &'static str = "aptos.indexer_data.v1.IndexerDataService";
+    impl<T: FullnodeData> tonic::server::NamedService for FullnodeDataServer<T> {
+        const NAME: &'static str = "aptos.internal.fullnode.v1.FullnodeData";
     }
 }

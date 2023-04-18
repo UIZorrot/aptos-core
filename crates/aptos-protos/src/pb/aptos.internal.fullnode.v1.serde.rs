@@ -1,7 +1,7 @@
 // Copyright © Aptos Foundation
 
 // @generated
-impl serde::Serialize for RawDatastreamRequest {
+impl serde::Serialize for GetTransactionsFromNodeRequest {
     #[allow(deprecated)]
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
@@ -15,7 +15,7 @@ impl serde::Serialize for RawDatastreamRequest {
         if self.transactions_count.is_some() {
             len += 1;
         }
-        let mut struct_ser = serializer.serialize_struct("aptos.datastream.v1.RawDatastreamRequest", len)?;
+        let mut struct_ser = serializer.serialize_struct("aptos.internal.fullnode.v1.GetTransactionsFromNodeRequest", len)?;
         if let Some(v) = self.starting_version.as_ref() {
             struct_ser.serialize_field("startingVersion", ToString::to_string(&v).as_str())?;
         }
@@ -25,7 +25,7 @@ impl serde::Serialize for RawDatastreamRequest {
         struct_ser.end()
     }
 }
-impl<'de> serde::Deserialize<'de> for RawDatastreamRequest {
+impl<'de> serde::Deserialize<'de> for GetTransactionsFromNodeRequest {
     #[allow(deprecated)]
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
     where
@@ -74,13 +74,13 @@ impl<'de> serde::Deserialize<'de> for RawDatastreamRequest {
         }
         struct GeneratedVisitor;
         impl<'de> serde::de::Visitor<'de> for GeneratedVisitor {
-            type Value = RawDatastreamRequest;
+            type Value = GetTransactionsFromNodeRequest;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                formatter.write_str("struct aptos.datastream.v1.RawDatastreamRequest")
+                formatter.write_str("struct aptos.internal.fullnode.v1.GetTransactionsFromNodeRequest")
             }
 
-            fn visit_map<V>(self, mut map: V) -> std::result::Result<RawDatastreamRequest, V::Error>
+            fn visit_map<V>(self, mut map: V) -> std::result::Result<GetTransactionsFromNodeRequest, V::Error>
                 where
                     V: serde::de::MapAccess<'de>,
             {
@@ -106,16 +106,16 @@ impl<'de> serde::Deserialize<'de> for RawDatastreamRequest {
                         }
                     }
                 }
-                Ok(RawDatastreamRequest {
+                Ok(GetTransactionsFromNodeRequest {
                     starting_version: starting_version__,
                     transactions_count: transactions_count__,
                 })
             }
         }
-        deserializer.deserialize_struct("aptos.datastream.v1.RawDatastreamRequest", FIELDS, GeneratedVisitor)
+        deserializer.deserialize_struct("aptos.internal.fullnode.v1.GetTransactionsFromNodeRequest", FIELDS, GeneratedVisitor)
     }
 }
-impl serde::Serialize for RawDatastreamResponse {
+impl serde::Serialize for GetTransactionsFromNodeResponse {
     #[allow(deprecated)]
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
@@ -129,16 +129,16 @@ impl serde::Serialize for RawDatastreamResponse {
         if self.response.is_some() {
             len += 1;
         }
-        let mut struct_ser = serializer.serialize_struct("aptos.datastream.v1.RawDatastreamResponse", len)?;
+        let mut struct_ser = serializer.serialize_struct("aptos.internal.fullnode.v1.GetTransactionsFromNodeResponse", len)?;
         if self.chain_id != 0 {
             struct_ser.serialize_field("chainId", &self.chain_id)?;
         }
         if let Some(v) = self.response.as_ref() {
             match v {
-                raw_datastream_response::Response::Status(v) => {
+                get_transactions_from_node_response::Response::Status(v) => {
                     struct_ser.serialize_field("status", v)?;
                 }
-                raw_datastream_response::Response::Data(v) => {
+                get_transactions_from_node_response::Response::Data(v) => {
                     struct_ser.serialize_field("data", v)?;
                 }
             }
@@ -146,7 +146,7 @@ impl serde::Serialize for RawDatastreamResponse {
         struct_ser.end()
     }
 }
-impl<'de> serde::Deserialize<'de> for RawDatastreamResponse {
+impl<'de> serde::Deserialize<'de> for GetTransactionsFromNodeResponse {
     #[allow(deprecated)]
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
     where
@@ -197,13 +197,13 @@ impl<'de> serde::Deserialize<'de> for RawDatastreamResponse {
         }
         struct GeneratedVisitor;
         impl<'de> serde::de::Visitor<'de> for GeneratedVisitor {
-            type Value = RawDatastreamResponse;
+            type Value = GetTransactionsFromNodeResponse;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                formatter.write_str("struct aptos.datastream.v1.RawDatastreamResponse")
+                formatter.write_str("struct aptos.internal.fullnode.v1.GetTransactionsFromNodeResponse")
             }
 
-            fn visit_map<V>(self, mut map: V) -> std::result::Result<RawDatastreamResponse, V::Error>
+            fn visit_map<V>(self, mut map: V) -> std::result::Result<GetTransactionsFromNodeResponse, V::Error>
                 where
                     V: serde::de::MapAccess<'de>,
             {
@@ -223,25 +223,25 @@ impl<'de> serde::Deserialize<'de> for RawDatastreamResponse {
                             if response__.is_some() {
                                 return Err(serde::de::Error::duplicate_field("status"));
                             }
-                            response__ = map.next_value::<::std::option::Option<_>>()?.map(raw_datastream_response::Response::Status)
+                            response__ = map.next_value::<::std::option::Option<_>>()?.map(get_transactions_from_node_response::Response::Status)
 ;
                         }
                         GeneratedField::Data => {
                             if response__.is_some() {
                                 return Err(serde::de::Error::duplicate_field("data"));
                             }
-                            response__ = map.next_value::<::std::option::Option<_>>()?.map(raw_datastream_response::Response::Data)
+                            response__ = map.next_value::<::std::option::Option<_>>()?.map(get_transactions_from_node_response::Response::Data)
 ;
                         }
                     }
                 }
-                Ok(RawDatastreamResponse {
+                Ok(GetTransactionsFromNodeResponse {
                     chain_id: chain_id__.unwrap_or_default(),
                     response: response__,
                 })
             }
         }
-        deserializer.deserialize_struct("aptos.datastream.v1.RawDatastreamResponse", FIELDS, GeneratedVisitor)
+        deserializer.deserialize_struct("aptos.internal.fullnode.v1.GetTransactionsFromNodeResponse", FIELDS, GeneratedVisitor)
     }
 }
 impl serde::Serialize for StreamStatus {
@@ -261,7 +261,7 @@ impl serde::Serialize for StreamStatus {
         if self.end_version.is_some() {
             len += 1;
         }
-        let mut struct_ser = serializer.serialize_struct("aptos.datastream.v1.StreamStatus", len)?;
+        let mut struct_ser = serializer.serialize_struct("aptos.internal.fullnode.v1.StreamStatus", len)?;
         if self.r#type != 0 {
             let v = stream_status::StatusType::from_i32(self.r#type)
                 .ok_or_else(|| serde::ser::Error::custom(format!("Invalid variant {}", self.r#type)))?;
@@ -331,7 +331,7 @@ impl<'de> serde::Deserialize<'de> for StreamStatus {
             type Value = StreamStatus;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                formatter.write_str("struct aptos.datastream.v1.StreamStatus")
+                formatter.write_str("struct aptos.internal.fullnode.v1.StreamStatus")
             }
 
             fn visit_map<V>(self, mut map: V) -> std::result::Result<StreamStatus, V::Error>
@@ -374,7 +374,7 @@ impl<'de> serde::Deserialize<'de> for StreamStatus {
                 })
             }
         }
-        deserializer.deserialize_struct("aptos.datastream.v1.StreamStatus", FIELDS, GeneratedVisitor)
+        deserializer.deserialize_struct("aptos.internal.fullnode.v1.StreamStatus", FIELDS, GeneratedVisitor)
     }
 }
 impl serde::Serialize for stream_status::StatusType {
@@ -470,7 +470,7 @@ impl serde::Serialize for TransactionOutput {
         if self.timestamp.is_some() {
             len += 1;
         }
-        let mut struct_ser = serializer.serialize_struct("aptos.datastream.v1.TransactionOutput", len)?;
+        let mut struct_ser = serializer.serialize_struct("aptos.internal.fullnode.v1.TransactionOutput", len)?;
         if !self.encoded_proto_data.is_empty() {
             struct_ser.serialize_field("encodedProtoData", pbjson::private::base64::encode(&self.encoded_proto_data).as_str())?;
         }
@@ -537,7 +537,7 @@ impl<'de> serde::Deserialize<'de> for TransactionOutput {
             type Value = TransactionOutput;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                formatter.write_str("struct aptos.datastream.v1.TransactionOutput")
+                formatter.write_str("struct aptos.internal.fullnode.v1.TransactionOutput")
             }
 
             fn visit_map<V>(self, mut map: V) -> std::result::Result<TransactionOutput, V::Error>
@@ -580,7 +580,7 @@ impl<'de> serde::Deserialize<'de> for TransactionOutput {
                 })
             }
         }
-        deserializer.deserialize_struct("aptos.datastream.v1.TransactionOutput", FIELDS, GeneratedVisitor)
+        deserializer.deserialize_struct("aptos.internal.fullnode.v1.TransactionOutput", FIELDS, GeneratedVisitor)
     }
 }
 impl serde::Serialize for TransactionsOutput {
@@ -594,7 +594,7 @@ impl serde::Serialize for TransactionsOutput {
         if !self.transactions.is_empty() {
             len += 1;
         }
-        let mut struct_ser = serializer.serialize_struct("aptos.datastream.v1.TransactionsOutput", len)?;
+        let mut struct_ser = serializer.serialize_struct("aptos.internal.fullnode.v1.TransactionsOutput", len)?;
         if !self.transactions.is_empty() {
             struct_ser.serialize_field("transactions", &self.transactions)?;
         }
@@ -648,7 +648,7 @@ impl<'de> serde::Deserialize<'de> for TransactionsOutput {
             type Value = TransactionsOutput;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                formatter.write_str("struct aptos.datastream.v1.TransactionsOutput")
+                formatter.write_str("struct aptos.internal.fullnode.v1.TransactionsOutput")
             }
 
             fn visit_map<V>(self, mut map: V) -> std::result::Result<TransactionsOutput, V::Error>
@@ -671,6 +671,6 @@ impl<'de> serde::Deserialize<'de> for TransactionsOutput {
                 })
             }
         }
-        deserializer.deserialize_struct("aptos.datastream.v1.TransactionsOutput", FIELDS, GeneratedVisitor)
+        deserializer.deserialize_struct("aptos.internal.fullnode.v1.TransactionsOutput", FIELDS, GeneratedVisitor)
     }
 }

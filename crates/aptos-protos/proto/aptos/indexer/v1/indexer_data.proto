@@ -3,17 +3,13 @@
 
 syntax = "proto3";
 
-package aptos.indexer_data.v1;
+package aptos.indexer.v1;
 
 import "aptos/transaction/testing1/v1/transaction.proto";
 import "aptos/util/timestamp/timestamp.proto";
 
 message ChainMetadata {
     optional uint64 chain_id = 1;
-}
-
-message TransactionsBatch {
-  repeated aptos.transaction.testing1.v1.Transaction transactions  = 1;
 }
 
 message GetTransactionsRequest {
@@ -33,16 +29,16 @@ message GetTransactionsResponse {
   optional uint64 version = 1;
 
   // Required; timestamp of current batch.
-  aptos.util.timestamp.Timestamp timestamp = 2;
+  optional aptos.util.timestamp.Timestamp timestamp = 2;
 
   // Required; transactions data.
-  TransactionsBatch transactions = 3;
+  repeated aptos.transaction.testing1.v1.Transaction transactions  = 3;
   
   // Required; chain metadata.
-  ChainMetadata chain_metadata = 4;
+  optional ChainMetadata chain_metadata = 4;
 }
 
-service IndexerDataService {
+service IndexerData {
     // Get transactions without any filtering from starting version and end if transaction count is present.
-    rpc GetTransactions(GetTransactionsRequest) returns (GetTransactionsResponse);
+    rpc GetTransactions(GetTransactionsRequest) returns (stream GetTransactionsResponse);
 }

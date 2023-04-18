@@ -10,8 +10,9 @@ use aptos_api::context::Context;
 use aptos_api_types::{AsConverter, Transaction as APITransaction, TransactionOnChainData};
 use aptos_logger::{error, info, sample, sample::SampleRate};
 use aptos_protos::{
-    datastream::v1::{
-        raw_datastream_response, RawDatastreamResponse, TransactionOutput, TransactionsOutput,
+    internal::fullnode::v1::{
+        get_transactions_from_node_response, GetTransactionsFromNodeResponse, TransactionOutput,
+        TransactionsOutput,
     },
     transaction::testing1::v1::Transaction as TransactionPB,
 };
@@ -30,7 +31,7 @@ pub struct IndexerStreamCoordinator {
     pub output_batch_size: u16,
     pub highest_known_version: u64,
     pub context: Arc<Context>,
-    pub transactions_sender: mpsc::Sender<Result<RawDatastreamResponse, tonic::Status>>,
+    pub transactions_sender: mpsc::Sender<Result<GetTransactionsFromNodeResponse, tonic::Status>>,
 }
 
 // Single batch of transactions to fetch, convert, and stream
@@ -47,7 +48,7 @@ impl IndexerStreamCoordinator {
         processor_task_count: u16,
         processor_batch_size: u16,
         output_batch_size: u16,
-        transactions_sender: mpsc::Sender<Result<RawDatastreamResponse, tonic::Status>>,
+        transactions_sender: mpsc::Sender<Result<GetTransactionsFromNodeResponse, tonic::Status>>,
     ) -> Self {
         Self {
             current_version: request_start_version,
@@ -88,8 +89,8 @@ impl IndexerStreamCoordinator {
                 let encoded = Self::encode_pb_txns(pb_txns);
                 // Wrap in stream response object and send to channel
                 for chunk in encoded.chunks(output_batch_size as usize) {
-                    let item = RawDatastreamResponse {
-                        response: Some(raw_datastream_response::Response::Data(
+                    let item = GetTransactionsFromNodeResponse {
+                        response: Some(get_transactions_from_node_response::Response::Data(
                             TransactionsOutput {
                                 transactions: chunk.to_vec(),
                             },
