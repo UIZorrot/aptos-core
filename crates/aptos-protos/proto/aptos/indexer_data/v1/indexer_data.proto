@@ -1,0 +1,48 @@
+// Copyright © Aptos Foundation
+// SPDX-License-Identifier: Apache-2.0
+
+syntax = "proto3";
+
+package aptos.indexer_data.v1;
+
+import "aptos/transaction/testing1/v1/transaction.proto";
+import "aptos/util/timestamp/timestamp.proto";
+
+message ChainMetadata {
+    optional uint64 chain_id = 1;
+}
+
+message TransactionsBatch {
+  repeated aptos.transaction.testing1.v1.Transaction transactions  = 1;
+}
+
+message GetTransactionsRequest {
+  // Required; start version of current stream.
+  optional uint64 starting_version = 1;
+
+  // Optional; number of transactions to return in current stream.
+  // If not present, return an infinite stream of transactions.
+  optional uint64 transactions_count = 2;
+
+  // Optional; number of transactions to return in current batch.
+  optional uint64 batch_size = 3;
+}
+
+message GetTransactionsResponse {
+  // Required; start version of current stream.
+  optional uint64 version = 1;
+
+  // Required; timestamp of current batch.
+  aptos.util.timestamp.Timestamp timestamp = 2;
+
+  // Required; transactions data.
+  TransactionsBatch transactions = 3;
+  
+  // Required; chain metadata.
+  ChainMetadata chain_metadata = 4;
+}
+
+service IndexerDataService {
+    // Get transactions without any filtering from starting version and end if transaction count is present.
+    rpc GetTransactions(GetTransactionsRequest) returns (GetTransactionsResponse);
+}
