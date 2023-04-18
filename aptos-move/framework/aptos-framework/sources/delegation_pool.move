@@ -95,7 +95,6 @@ module aptos_framework::delegation_pool {
     use aptos_framework::coin;
     use aptos_framework::event::{Self, EventHandle};
     use aptos_framework::stake;
-    use aptos_framework::staking_config;
     use aptos_framework::timestamp;
 
     const MODULE_SALT: vector<u8> = b"aptos_framework::delegation_pool";
@@ -382,7 +381,7 @@ module aptos_framework::delegation_pool {
     /// extracted-fee = (amount - extracted-fee) * reward-rate% * (100% - operator-commission%)
     public fun get_add_stake_fee(pool_address: address, amount: u64): u64 acquires DelegationPool {
         if (stake::is_current_epoch_validator(pool_address)) {
-            let (rewards_rate, rewards_rate_denominator) = staking_config::get_reward_rate(&staking_config::get());
+            let (rewards_rate, rewards_rate_denominator) = stake::get_reward_rate();
             if (rewards_rate_denominator > 0) {
                 assert_delegation_pool_exists(pool_address);
                 let pool = borrow_global<DelegationPool>(pool_address);
